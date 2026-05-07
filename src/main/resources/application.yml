@@ -1,0 +1,33 @@
+# =============================================================================
+# application.yml — Configuracion base del msg-pipeline-orchestrator-sesion-06
+# =============================================================================
+#
+# ROL: Orchestrator Lambda — recibe requests de API Gateway y arranca Step Functions
+#
+# PERFIL ACTIVO:
+#   local: ./gradlew bootRun --args='--spring.profiles.active=local'
+#   aws:   OrchestratorHandler → SpringApplicationBuilder.profiles("aws")
+# =============================================================================
+
+spring:
+  application:
+    name: msg-pipeline-orchestrator-sesion-06
+
+app:
+  aws:
+    region: ${AWS_REGION_NAME:us-east-1}
+    # ARN de la State Machine de Step Functions
+    # En Lambda: configurar como variable de entorno STATE_MACHINE_ARN
+    state-machine-arn: ${STATE_MACHINE_ARN:arn:aws:states:us-east-1:ACCOUNT_ID:stateMachine:msg-pipeline-workflow-sesion-06}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    com.msgpipeline: INFO
+    software.amazon.awssdk: WARN

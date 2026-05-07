@@ -1,0 +1,19 @@
+# =============================================================================
+# application-aws.yml — Perfil AWS Lambda (msg-pipeline-orchestrator-sesion-06)
+# =============================================================================
+#
+# VARIABLES DE ENTORNO REQUERIDAS EN LAMBDA:
+#   STATE_MACHINE_ARN = arn:aws:states:us-east-1:ACCOUNT:stateMachine:msg-pipeline-workflow-sesion-06
+# =============================================================================
+
+spring:
+  main:
+    # SERVLET: requerido para Spring Boot 3.5 en Lambda
+    # Con NONE aparece ClassCastException con los filtros de Spring
+    web-application-type: servlet
+    allow-bean-definition-overriding: false
+
+logging:
+  level:
+    com.msgpipeline: INFO
+    software.amazon.awssdk: WARN

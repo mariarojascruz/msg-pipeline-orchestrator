@@ -1,0 +1,129 @@
+// =============================================================================
+// build.gradle — msg-pipeline-orchestrator-sesion-06
+// =============================================================================
+//
+// ARQUITECTURA: Hexagonal (Ports & Adapters) + Clean Architecture
+//
+// ROL EN SESIÓN 06:
+//   El Orchestrator Lambda es el punto de entrada del pipeline.
+//   Recibe requests HTTP de API Gateway, valida el payload básico y
+//   arranca una ejecución de AWS Step Functions (StartExecution).
+//   Step Functions coordina la validación y el procesamiento del mensaje.
+//
+// FLUJO SESIÓN 06:
+//   Postman → POST /messages-s6 → API Gateway
+//   → Lambda Orchestrator (este proyecto)
+//   → StartExecution → StepFunctions msg-pipeline-workflow-sesion-06
+//   → (State Machine) ValidarMensaje → EvaluarValidacion → InvocarLambda
+//   → Lambda Processor (msg-pipeline-processor-sesion-06)
+//   → DynamoDB (PENDING) + SNS (email)
+//
+// HANDLER LAMBDA:
+//   com.msgpipeline.orchestrator.OrchestratorHandler::handleRequest
+//
+// TAREAS GRADLE:
+//   ./gradlew bootRun --args='--spring.profiles.active=local'  → dev local
+//   ./gradlew clean buildZip                                    → deploy Lambda
+//
+// =============================================================================
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.0'
+    id 'io.spring.dependency-management' version '1.1.5'
+}
+
+group   = 'com.msgpipeline'
+version = '1.0.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+
+    // ─── Spring Boot Core ────────────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // ─── SpringDoc OpenAPI — Swagger UI ──────────────────────────────────────
+    // Solo activo en perfil 'local' via OpenApiConfig
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+
+    // ─── AWS Lambda ──────────────────────────────────────────────────────────
+    // aws-lambda-java-core: RequestHandler, Context
+    // aws-lambda-java-events: APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent
+    implementation 'com.amazonaws:aws-lambda-java-core:1.2.3'
+    implementation 'com.amazonaws:aws-lambda-java-events:3.11.4'
+
+    // ─── AWS SDK v2 ──────────────────────────────────────────────────────────
+    implementation platform('software.amazon.awssdk:bom:2.25.40')
+
+    // Step Functions: StartExecution para iniciar la máquina de estados
+    // El Orchestrator Lambda es el único punto de integración con Step Functions
+    implementation 'software.amazon.awssdk:sfn'
+
+    // ─── Utilidades ──────────────────────────────────────────────────────────
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    compileOnly    'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // ─── Tests ───────────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito:mockito-core'
+}
+
+// ─── Configuración del JAR ───────────────────────────────────────────────────
+// bootJar genera BOOT-INF/classes/ → Lambda no puede cargar las clases
+// jar genera las clases en la raíz → buildZip las empaqueta correctamente
+bootJar { enabled = false }
+jar     { enabled = true  }
+
+// ─── buildZip — Formato ZIP oficial para AWS Lambda Java ─────────────────────
+//
+// Estructura del ZIP generado:
+//   msg-pipeline-orchestrator-sesion-06-lambda.zip
+//   ├── com/msgpipeline/orchestrator/OrchestratorHandler.class
+//   ├── com/msgpipeline/orchestrator/...
+//   └── lib/  ← JARs de dependencias sin descomprimir
+//       ├── spring-boot-3.5.0.jar
+//       ├── aws-lambda-java-core-1.2.3.jar
+//       └── ...
+//
+// Handler a configurar en Lambda Console:
+//   com.msgpipeline.orchestrator.OrchestratorHandler::handleRequest
+//
+tasks.register('buildZip', Zip) {
+    group       = 'build'
+    description = 'Genera el ZIP de despliegue para AWS Lambda (clases en raíz + deps en lib/)'
+
+    archiveFileName      = 'msg-pipeline-orchestrator-sesion-06-lambda.zip'
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+
+    dependsOn compileJava, processResources
+
+    // Clases del proyecto van en la RAÍZ del ZIP
+    from sourceSets.main.output
+
+    // Dependencias van en /lib/ sin descomprimir
+    into('lib') {
+        from configurations.runtimeClasspath
+    }
+}
+
+build.dependsOn buildZip
+
+test {
+    useJUnitPlatform()
+}
