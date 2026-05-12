@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: msg-pipeline-orchestrator-sesion-07
+app:
+  aws:
+    region: ${AWS_REGION_NAME:us-east-1}
+    state-machine-arn: ${STATE_MACHINE_ARN:arn:aws:states:us-east-1:629742034427:stateMachine:msg-pipeline-workflow-sesion-07}
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+logging:
+  level:
+    com.msgpipeline: INFO
+    software.amazon.awssdk: WARN

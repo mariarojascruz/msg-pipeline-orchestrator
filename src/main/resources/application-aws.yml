@@ -1,0 +1,5 @@
+# Perfil AWS Lambda
+# ENV: STATE_MACHINE_ARN
+logging:
+  level:
+    com.msgpipeline: INFO
