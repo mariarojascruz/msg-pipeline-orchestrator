@@ -28,7 +28,7 @@ import software.amazon.awssdk.services.sfn.model.StartExecutionResponse;
  *   - name: nombre único de la ejecución (aparece en la consola SF)
  *   - input: JSON con los datos del mensaje para los estados
  *
- * SfnClient: thread-safe, se inicializa estáticamente para warm starts.
+ * SfnClient: thread-safe, se inicializa una sola vez (bean singleton) para warm starts.
  *   No recrear en cada invocación — es costoso en tiempo y memoria.
  *
  * CREDENCIALES AWS:
@@ -42,18 +42,17 @@ import software.amazon.awssdk.services.sfn.model.StartExecutionResponse;
 public class StepFunctionsAdapter implements WorkflowExecutionPort {
 
     // SfnClient: thread-safe, se inicializa una sola vez en el cold start
-    private static final SfnClient sfnClient;
-
-    static {
-        // Inicialización estática: ejecuta UNA VEZ en el cold start del Lambda
-        // AWS SDK toma las credenciales del IAM Role del Lambda automáticamente
-        sfnClient = SfnClient.builder()
-                .region(Region.US_EAST_1)
-                .build();
-    }
+    private final SfnClient sfnClient;
 
     @Value("${app.aws.state-machine-arn}")
     private String stateMachineArn;
+
+    public StepFunctionsAdapter(@Value("${app.aws.region}") String region) {
+        // AWS SDK toma las credenciales del IAM Role del Lambda automáticamente
+        this.sfnClient = SfnClient.builder()
+                .region(Region.of(region))
+                .build();
+    }
 
     /**
      * Inicia una ejecución de Step Functions con el input del mensaje.
